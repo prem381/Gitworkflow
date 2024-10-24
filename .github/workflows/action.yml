@@ -1,7 +1,9 @@
 name: GitHub Action
 run-name: ${{ github.actor }} is testing out GitHub Actions 🚀
-on: [push]
-    branch: main
+on: 
+  push
+    branches: 
+     - main
 
 jobs:
   Build-Action:
