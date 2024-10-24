@@ -1,0 +1,67 @@
+name: Monthly Release Automation
+
+on:
+  schedule:
+    # Run this workflow every month on the 25th at 00:00 UTC
+    - cron: '0 0 25 * *'
+  workflow_dispatch: # Allows manual triggering
+
+jobs:
+  prepare-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js (if needed)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '14' # Modify as per your environment
+
+      - name: Install dependencies
+        run: npm install # Or any other command specific to your project
+
+      - name: Run tests
+        run: npm test # Replace with the relevant test command
+
+      - name: Create and Push Release Branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b release/$(date +%Y-%m-%d)
+          git push origin release/$(date +%Y-%m-%d)
+
+  deploy-release:
+    needs: prepare-release
+    runs-on: ubuntu-latest
+    if: success()
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Merge release into master
+        run: |
+          git checkout master
+          git merge release/$(date +%Y-%m-%d)
+          git push origin master
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: actions/create-release@v3
+        with:
+          tag_name: v1.0.${{ github.run_number }} # Dynamic version
+          release_name: "Release v1.0.${{ github.run_number }}"
+          body: "Automated monthly release for v1.0.${{ github.run_number }}"
+          draft: false
+          prerelease: false
+
+  notify:
+    needs: deploy-release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send notification
+        run: |
+          echo "Release complete! Notifying the team..." 
+          # Optionally integrate with Slack/Email APIs here
